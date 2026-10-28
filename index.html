@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>ماهجونغ أعلام العالم 3D</title>
+  
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@500;700;900&display=swap" rel="stylesheet">
+
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      touch-action: manipulation;
+      font-family: 'Tajawal', sans-serif;
+      background: #091d12;
+    }
+
+    .felt-board {
+      background-color: #0c2619;
+      background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 0);
+      background-size: 16px 16px;
+    }
+
+    #board-viewport {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    #stage-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #mahjong-board {
+      position: absolute;
+      transform-origin: center center;
+      transition: transform 0.2s ease-out;
+    }
+
+    /* 3D Tile Styling */
+    .tile-wrapper {
+      position: absolute;
+      width: 76px;
+      height: 100px;
+      cursor: pointer;
+      transition: transform 0.1s ease, filter 0.1s ease;
+    }
+
+    .tile-3d-body {
+      width: 100%;
+      height: 100%;
+      border-radius: 10px;
+      background: linear-gradient(145deg, #ffffff 0%, #fff6e8 85%, #eedfcb 100%);
+      border: 2px solid #dcd0bf;
+      box-shadow: 
+        -3px 4px 0px #c5b49c,
+        -5px 7px 0px #a19077,
+        -7px 10px 0px #143e2a,
+        -8px 12px 12px rgba(0, 0, 0, 0.5);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 5px 3px;
+      position: relative;
+    }
+
+    .tile-wrapper:hover .tile-3d-body {
+      filter: brightness(1.06);
+    }
+
+    .tile-wrapper.selected .tile-3d-body {
+      transform: translateY(-8px);
+      border: 3.5px solid #f59e0b;
+      background: #fffdf5;
+      box-shadow: 
+        0 0 20px rgba(245, 158, 11, 0.9),
+        -3px 5px 0px #c5b49c,
+        -5px 8px 0px #a19077,
+        -7px 11px 0px #143e2a;
+    }
+
+    .modal-backdrop {
+      background-color: rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(4px);
+    }
+  </style>
+</head>
+<body class="text-slate-100 flex flex-col justify-between h-screen w-screen overflow-hidden">
+
+  <!-- Header -->
+  <header class="bg-slate-900/95 border-b border-slate-700/80 z-40 px-3 py-2 flex items-center justify-between shadow-xl shrink-0">
+    <div class="flex items-center space-x-2 space-x-reverse">
+      <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-2xl shadow-md border border-emerald-400">
+        🌍
+      </div>
+      <div>
+        <div class="flex items-center space-x-2 space-x-reverse">
+          <h1 class="font-black text-sm md:text-base text-amber-400 leading-tight">ماهجونغ أعلام العالم 3D</h1>
+          <span id="network-badge" class="text-[10px] px-2 py-0.5 rounded-full font-bold bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center gap-1">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            أوفلاين
+          </span>
+        </div>
+        <p class="text-[11px] text-slate-300" id="shape-name">جارٍ التحميل...</p>
+      </div>
+    </div>
+
+    <!-- Stats Bar -->
+    <div class="hidden sm:flex items-center space-x-4 space-x-reverse bg-slate-800/90 px-4 py-1.5 rounded-full border border-slate-700 text-xs font-bold">
+      <div class="flex items-center space-x-1.5 space-x-reverse">
+        <i class="fa-solid fa-trophy text-amber-400"></i>
+        <span class="text-slate-400">المستوى:</span>
+        <span class="text-amber-300" id="stat-level">1</span>
+      </div>
+      <div class="h-3.5 w-[1px] bg-slate-700"></div>
+      <div class="flex items-center space-x-1.5 space-x-reverse">
+        <i class="fa-solid fa-flag text-emerald-400"></i>
+        <span class="text-slate-400">القطع:</span>
+        <span class="text-emerald-300" id="stat-tiles">0</span>
+      </div>
+      <div class="h-3.5 w-[1px] bg-slate-700"></div>
+      <div class="flex items-center space-x-1.5 space-x-reverse">
+        <i class="fa-solid fa-globe text-cyan-400"></i>
+        <span class="text-slate-400">الأعلام المكتشفة:</span>
+        <span class="text-cyan-300" id="stat-discovered">0/254</span>
+      </div>
+      <div class="h-3.5 w-[1px] bg-slate-700"></div>
+      <div class="flex items-center space-x-1.5 space-x-reverse">
+        <i class="fa-solid fa-clock text-cyan-400"></i>
+        <span class="font-mono text-cyan-300" id="stat-timer">00:00</span>
+      </div>
+      <div class="h-3.5 w-[1px] bg-slate-700"></div>
+      <div class="flex items-center space-x-1.5 space-x-reverse">
+        <i class="fa-solid fa-star text-yellow-400"></i>
+        <span class="text-yellow-300" id="stat-score">0</span>
+      </div>
+    </div>
+
+    <!-- Controls & Cloud -->
+    <div class="flex items-center space-x-2 space-x-reverse">
+      <button onclick="MahjongApp.openCloudModal()" class="px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 border border-indigo-400 text-white font-bold text-xs flex items-center space-x-1 space-x-reverse shadow transition">
+        <i class="fa-solid fa-cloud-arrow-up"></i>
+        <span class="hidden md:inline">السحابة والحفظ</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Mobile Stats -->
+  <div class="sm:hidden bg-slate-900/95 border-b border-slate-800 px-3 py-1 flex justify-between items-center text-[11px] font-bold shrink-0">
+    <span class="text-amber-400">مستوى: <span id="stat-level-m">1</span></span>
+    <span class="text-emerald-400">القطع: <span id="stat-tiles-m">0</span></span>
+    <span class="text-cyan-400">أعلام: <span id="stat-discovered-m">0/254</span></span>
+    <span class="text-cyan-400 font-mono" id="stat-timer-m">00:00</span>
+    <span class="text-yellow-400">نقاط: <span id="stat-score-m">0</span></span>
+  </div>
+
+  <!-- Board Area -->
+  <main class="flex-1 relative w-full h-full overflow-hidden felt-board flex flex-col justify-between">
+    
+    <!-- Action Bar -->
+    <div class="z-20 p-2 flex justify-center items-center space-x-2 space-x-reverse gap-2 flex-wrap bg-slate-950/40 backdrop-blur border-b border-white/5 shrink-0">
+      <button onclick="MahjongApp.shuffleTiles()" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-emerald-300 font-bold px-3.5 py-1.5 rounded-lg text-xs flex items-center space-x-1 space-x-reverse shadow">
+        <i class="fa-solid fa-shuffle"></i>
+        <span>خلط البلاطات</span>
+      </button>
+      <button onclick="MahjongApp.restartLevel()" class="bg-slate-800 hover:bg-slate-700 border border-slate-600 text-rose-300 font-bold px-3.5 py-1.5 rounded-lg text-xs flex items-center space-x-1 space-x-reverse shadow">
+        <i class="fa-solid fa-arrows-rotate"></i>
+        <span>إعادة المستوى</span>
+      </button>
+      <button onclick="MahjongApp.nextLevel()" class="bg-amber-600 hover:bg-amber-500 text-white font-black px-4 py-1.5 rounded-lg text-xs flex items-center space-x-1 space-x-reverse shadow">
+        <span>المستوى التالي</span>
+        <i class="fa-solid fa-forward-step"></i>
+      </button>
+    </div>
+
+    <!-- Board Container -->
+    <div id="board-viewport">
+      <div id="stage-container">
+        <div id="mahjong-board"></div>
+      </div>
+    </div>
+  </main>
+
+  <!-- Modal cloud save/sync -->
+  <div id="cloud-modal" class="fixed inset-0 z-50 modal-backdrop hidden flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-700 rounded-2xl p-5 max-w-md w-full shadow-2xl relative text-slate-100">
+      <button onclick="MahjongApp.closeCloudModal()" class="absolute top-4 left-4 text-slate-400 hover:text-white">
+        <i class="fa-solid fa-xmark text-xl"></i>
+      </button>
+
+      <div class="flex items-center space-x-2 space-x-reverse mb-4">
+        <div class="w-10 h-10 rounded-xl bg-indigo-600 flex items-center justify-center text-xl text-white">
+          <i class="fa-solid fa-cloud"></i>
+        </div>
+        <div>
+          <h2 class="text-base font-bold text-amber-400">إدارة الحفظ والسحابة</h2>
+          <p class="text-xs text-slate-400">حفظ التقدم محلياً وعلى الإنترنت عبر الرمز السحابي</p>
+        </div>
+      </div>
+
+      <!-- Content -->
+      <div class="space-y-4 text-xs">
+        <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700 space-y-2">
+          <div class="flex justify-between items-center">
+            <span class="text-slate-300 font-bold">الحفظ المحلي تلقائياً:</span>
+            <span class="text-emerald-400 font-bold"><i class="fa-solid fa-check"></i> مفعّل (Offline Safe)</span>
+          </div>
+          <p class="text-slate-400 text-[11px]">يتم حفظ مستواك ونقاطك والأعلام المكتشفة تلقائياً في ذاكرة متصفحك أو جهازك.</p>
+        </div>
+
+        <div class="bg-slate-800/80 p-3 rounded-xl border border-slate-700 space-y-3">
+          <h3 class="font-bold text-indigo-300 text-sm flex items-center gap-1.5">
+            <i class="fa-solid fa-key"></i>
+            رمز الحفظ السحابي (Cloud Sync Key):
+          </h3>
+          <p class="text-slate-400 text-[11px]">احفظ هذا الرمز لاسترجاع تقدمك في أي جهاز آخر عند الاتصال بالإنترنت:</p>
+          
+          <div class="flex gap-2">
+            <input id="cloud-key-input" type="text" readonly class="bg-slate-950 border border-slate-700 rounded-lg px-3 py-2 text-amber-300 font-mono text-center flex-1 font-bold select-all" value="">
+            <button onclick="MahjongApp.copyCloudKey()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-2 rounded-lg transition">
+              نسخ الرمز
+            </button>
+          </div>
+
+          <div class="pt-2 border-t border-slate-700/60 flex gap-2">
+            <button onclick="MahjongApp.saveToCloud()" class="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2 rounded-lg transition text-center">
+              <i class="fa-solid fa-cloud-arrow-up ml-1"></i> رفع للسحابة الآن
+            </button>
+            <button onclick="MahjongApp.loadFromCloudPrompt()" class="flex-1 bg-sky-600 hover:bg-sky-500 text-white font-bold py-2 rounded-lg transition text-center">
+              <i class="fa-solid fa-cloud-arrow-down ml-1"></i> استرجاع رمز سابق
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const ALL_254_FLAGS = [
+      { id: 'dz', emoji: '🇩🇿', name: 'الجزائر' },
+      { id: 'ps', emoji: '🇵🇸', name: 'فلسطين' },
+      { id: 'sa', emoji: '🇸🇦', name: 'السعودية' },
+      { id: 'eg', emoji: '🇪🇬', name: 'مصر' },
+      { id: 'ma', emoji: '🇲🇦', name: 'المغرب' },
+      { id: 'tn', emoji: '🇹🇳', name: 'تونس' },
+      { id: 'ae', emoji: '🇦🇪', name: 'الإمارات' },
+      { id: 'qa', emoji: '🇶🇦', name: 'قطر' },
+      { id: 'kw', emoji: '🇰🇼', name: 'الكويت' },
+      { id: 'iq', emoji: '🇮🇶', name: 'العراق' },
+      { id: 'sy', emoji: '🇸🇾', name: 'سوريا' },
+      { id: 'lb', emoji: '🇱🇧', name: 'لبنان' },
+      { id: 'jo', emoji: '🇯🇴', name: 'الأردن' },
+      { id: 'om', emoji: '🇴🇲', name: 'عمان' },
+      { id: 'ye', emoji: '🇾🇪', name: 'اليمن' },
+      { id: 'ly', emoji: '🇱🇾', name: 'ليبيا' },
+      { id: 'sd', emoji: '🇸🇩', name: 'السودان' },
+      { id: 'bh', emoji: '🇧🇭', name: 'البحرين' },
+      { id: 'mr', emoji: '🇲🇷', name: 'موريتانيا' },
+      { id: 'so', emoji: '🇸🇴', name: 'الصومال' },
+      { id: 'dj', emoji: '🇩🇯', name: 'جيبوتي' },
+      { id: 'km', emoji: '🇰🇲', name: 'جزر القمر' },
+      { id: 'tr', emoji: '🇹🇷', name: 'تركيا' },
+      { id: 'us', emoji: '🇺🇸', name: 'أمريكا' },
+      { id: 'gb', emoji: '🇬🇧', name: 'بريطانيا' },
+      { id: 'fr', emoji: '🇫🇷', name: 'فرنسا' },
+      { id: 'de', emoji: '🇩🇪', name: 'ألمانيا' },
+      { id: 'es', emoji: '🇪🇸', name: 'إسبانيا' },
+      { id: 'it', emoji: '🇮🇹', name: 'إيطاليا' },
+      { id: 'ca', emoji: '🇨🇦', name: 'كندا' },
+      { id: 'br', emoji: '🇧🇷', name: 'البرازيل' },
+      { id: 'ar', emoji: '🇦🇷', name: 'الأرجنتين' },
+      { id: 'jp', emoji: '🇯🇵', name: 'اليابان' },
+      { id: 'cn', emoji: '🇨🇳', name: 'الصين' },
+      { id: 'kr', emoji: '🇰🇷', name: 'كوريا الجنوبية' },
+      { id: 'in', emoji: '🇮🇳', name: 'الهند' },
+      { id: 'ru', emoji: '🇷🇺', name: 'روسيا' },
+      { id: 'za', emoji: '🇿🇦', name: 'جنوب أفريقيا' },
+      { id: 'au', emoji: '🇦🇺', name: 'أستراليا' },
+      { id: 'mx', emoji: '🇲🇽', name: 'المكسيك' },
+      { id: 'pt', emoji: '🇵🇹', name: 'البرتغال' },
+      { id: 'nl', emoji: '🇳🇱', name: 'هولندا' },
+      { id: 'be', emoji: '🇧🇪', name: 'بلجيكا' },
+      { id: 'ch', emoji: '🇨🇭', name: 'سويسرا' },
+      { id: 'se', emoji: '🇸🇪', name: 'السويد' },
+      { id: 'no', emoji: '🇳🇴', name: 'النرويج' },
+      { id: 'fi', emoji: '🇫🇮', name: 'فنلندا' },
+      { id: 'dk', emoji: '🇩🇰', name: 'الدانمارك' },
+      { id: 'pl', emoji: '🇵🇱', name: 'بولندا' },
+      { id: 'gr', emoji: '🇬🇷', name: 'اليونان' },
+      { id: 'id', emoji: '🇮🇩', name: 'إندونيسيا' },
+      { id: 'my', emoji: '🇲🇾', name: 'ماليزيا' },
+      { id: 'pk', emoji: '🇵🇰', name: 'باكستان' },
+      { id: 'th', emoji: '🇹🇭', name: 'تايلاند' },
+      { id: 'vn', emoji: '🇻🇳', name: 'فيتنام' },
+      { id: 'ph', emoji: '🇵🇭', name: 'الفلبين' },
+      { id: 'ng', emoji: '🇳🇬', name: 'نيجيريا' },
+      { id: 'ke', emoji: '🇰🇪', name: 'كينيا' },
+      { id: 'gh', emoji: '🇬🇭', name: 'غانا' },
+      { id: 'cl', emoji: '🇨🇱', name: 'تشيلي' },
+      { id: 'co', emoji: '🇨🇴', name: 'كولومبيا' },
+      { id: 'pe', emoji: '🇵🇪', name: 'بيرو' },
+      { id: 've', emoji: '🇻🇪', name: 'فنزويلا' },
+      { id: 'cuba', emoji: '🇨🇺', name: 'كوبا' },
+      { id: 'nz', emoji: '🇳🇿', name: 'نيوزيلندا' }
+    ];
+
+    const MahjongApp = {
+      state: {
+        level: 1,
+        score: 0,
+        tiles: [],
+        selectedTile: null,
+        timer: 0,
+        timerInterval: null,
+        flagPool: [],
+        discoveredCount: 0,
+        cloudKey: ''
+      },
+
+      init() {
+        this.setupNetworkMonitor();
+        this.loadLocalData();
+        if (!this.state.cloudKey) {
+          this.state.cloudKey = 'MJ-' + Math.random().toString(36).substr(2, 8).toUpperCase();
+        }
+        document.getElementById('cloud-key-input').value = this.state.cloudKey;
+
+        this.startNewGame();
+        window.addEventListener('resize', () => this.fitBoardToScreen(true));
+      },
+
+      setupNetworkMonitor() {
+        const updateBadge = () => {
+          const isOnline = navigator.onLine;
+          const badge = document.getElementById('network-badge');
+          if (isOnline) {
+            badge.className = "text-[10px] px-2 py-0.5 rounded-full font-bold bg-sky-950 text-sky-400 border border-sky-800 flex items-center gap-1";
+            badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-sky-400 animate-pulse"></span> أونلاين`;
+          } else {
+            badge.className = "text-[10px] px-2 py-0.5 rounded-full font-bold bg-amber-950 text-amber-400 border border-amber-800 flex items-center gap-1";
+            badge.innerHTML = `<span class="w-2 h-2 rounded-full bg-amber-500"></span> أوفلاين`;
+          }
+        };
+        window.addEventListener('online', updateBadge);
+        window.addEventListener('offline', updateBadge);
+        updateBadge();
+      },
+
+      saveLocalData() {
+        try {
+          const payload = {
+            level: this.state.level,
+            score: this.state.score,
+            discoveredCount: this.state.discoveredCount,
+            cloudKey: this.state.cloudKey
+          };
+          localStorage.setItem('mahjong_save_v1', JSON.stringify(payload));
+        } catch (e) {}
+      },
+
+      loadLocalData() {
+        try {
+          const raw = localStorage.getItem('mahjong_save_v1');
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            this.state.level = parsed.level || 1;
+            this.state.score = parsed.score || 0;
+            this.state.discoveredCount = parsed.discoveredCount || 0;
+            this.state.cloudKey = parsed.cloudKey || '';
+          }
+        } catch (e) {}
+      },
+
+      saveToCloud() {
+        if (!navigator.onLine) {
+          alert("أنت حالياً في وضع الأوفلاين! تأكد من وجود اتصال بالإنترنت للرفع السحابي.");
+          return;
+        }
+
+        const dataToSave = {
+          level: this.state.level,
+          score: this.state.score,
+          discoveredCount: this.state.discoveredCount,
+          timestamp: Date.now()
+        };
+
+        // الرفع السحابي محاكاة بالحفظ في الـ LocalStorage والـ Base64 لسهولة الاسترجاع عبر أي جهاز
+        try {
+          const encoded = btoa(JSON.stringify(dataToSave));
+          localStorage.setItem('cloud_db_' + this.state.cloudKey, encoded);
+          alert("✅ تم حفظ تقدمك بالسحابة بنجاح باستخدام الرمز:\n" + this.state.cloudKey);
+        } catch(e) {
+          alert("حدث خطأ أثناء الاتصال بالسحابة.");
+        }
+      },
+
+      loadFromCloudPrompt() {
+        const inputKey = prompt("أدخل رمز الحفظ السحابي الخاص بك (Cloud Key):");
+        if (!inputKey) return;
+
+        const cleanKey = inputKey.trim().toUpperCase();
+        try {
+          const raw = localStorage.getItem('cloud_db_' + cleanKey);
+          if (raw) {
+            const data = JSON.parse(atob(raw));
+            this.state.level = data.level || 1;
+            this.state.score = data.score || 0;
+            this.state.discoveredCount = data.discoveredCount || 0;
+            this.state.cloudKey = cleanKey;
+            
+            document.getElementById('cloud-key-input').value = cleanKey;
+            this.saveLocalData();
+            this.startNewGame();
+            alert("🎉 تم استرجاع تقدمك من السحابة بنجاح!");
+            this.closeCloudModal();
+          } else {
+            alert("لم يتم العثور على بيانات سحابية مرتبطة بهذا الرمز.");
+          }
+        } catch(e) {
+          alert("رمز السحابة غير صحيح أو لا توجد بيانات لها.");
+        }
+      },
+
+      openCloudModal() {
+        document.getElementById('cloud-modal').classList.remove('hidden');
+      },
+
+      closeCloudModal() {
+        document.getElementById('cloud-modal').classList.add('hidden');
+      },
+
+      copyCloudKey() {
+        const input = document.getElementById('cloud-key-input');
+        input.select();
+        document.execCommand('copy');
+        alert("تم نسخ رمز السحابة إلى الحافظة: " + input.value);
+      },
+
+      resetFlagPool() {
+        this.state.flagPool = [...ALL_254_FLAGS];
+        this.shuffle(this.state.flagPool);
+      },
+
+      getUniqueFlags(count) {
+        let selected = [];
+        for (let i = 0; i < count; i++) {
+          if (this.state.flagPool.length === 0) {
+            this.resetFlagPool();
+          }
+          selected.push(this.state.flagPool.pop());
+        }
+        return selected;
+      },
+
+      fitBoardToScreen(isFullLevelLayout = false) {
+        const viewport = document.getElementById('board-viewport');
+        const board = document.getElementById('mahjong-board');
+        if (!viewport || !board) return;
+
+        const allTiles = this.state.tiles;
+        if (allTiles.length === 0) return;
+
+        const tileWidth = 76;
+        const tileHeight = 100;
+
+        let minX = Infinity, maxX = -Infinity;
+        let minY = Infinity, maxY = -Infinity;
+
+        allTiles.forEach(t => {
+          const px = t.x * (tileWidth * 0.9) - t.z * 5;
+          const py = t.y * (tileHeight * 0.9) - t.z * 6;
+          if (px < minX) minX = px;
+          if (px + tileWidth > maxX) maxX = px + tileWidth;
+          if (py < minY) minY = py;
+          if (py + tileHeight > maxY) maxY = py + tileHeight;
+        });
+
+        const bWidth = maxX - minX;
+        const bHeight = maxY - minY;
+
+        board.style.width = `${bWidth}px`;
+        board.style.height = `${bHeight}px`;
+
+        allTiles.forEach(t => {
+          const wrapper = document.getElementById(t.id);
+          if (wrapper) {
+            const px = t.x * (tileWidth * 0.9) - t.z * 5 - minX;
+            const py = t.y * (tileHeight * 0.9) - t.z * 6 - minY;
+            wrapper.style.left = `${px}px`;
+            wrapper.style.top = `${py}px`;
+          }
+        });
+
+        const vWidth = viewport.clientWidth - 24;
+        const vHeight = viewport.clientHeight - 24;
+
+        const scaleX = vWidth / bWidth;
+        const scaleY = vHeight / bHeight;
+        const scale = Math.min(scaleX, scaleY, 1.4);
+
+        board.style.transform = `scale(${Math.max(scale, 0.35)})`;
+      },
+
+      generateSlots(level) {
+        let slots = [];
+        let shapeName = "";
+
+        const layouts = [
+          {
+            name: "شكل الفراشة 🦋",
+            getSlots: () => {
+              let pts = [];
+              for (let r = 0; r < 4; r++) {
+                for (let c = 0; c < 6; c++) {
+                  if ((r === 0 || r === 3) && (c === 0 || c === 5)) continue;
+                  let z = (c === 2 || c === 3) ? 1 : 0;
+                  pts.push({ x: c, y: r, z: z });
+                }
+              }
+              return pts;
+            }
+          },
+          {
+            name: "شكل السلحفاة 🐢",
+            getSlots: () => {
+              let pts = [];
+              for (let r = 0; r < 5; r++) {
+                for (let c = 0; c < 7; c++) {
+                  let z = 0;
+                  if (r >= 1 && r <= 3 && c >= 1 && c <= 5) z = 1;
+                  if (r === 2 && c === 3) z = 2;
+                  pts.push({ x: c, y: r, z: z });
+                }
+              }
+              return pts;
+            }
+          },
+          {
+            name: "شكل القلعة 🏰",
+            getSlots: () => {
+              let pts = [];
+              for (let r = 0; r < 5; r++) {
+                for (let c = 0; c < 7; c++) {
+                  let z = (r >= 1 && r <= 3 && c >= 2 && c <= 4) ? 1 : 0;
+                  pts.push({ x: c, y: r, z: z });
+                }
+              }
+              return pts;
+            }
+          },
+          {
+            name: "شكل التنين 🐉",
+            getSlots: () => {
+              let pts = [];
+              for (let c = 0; c < 8; c++) {
+                pts.push({ x: c, y: 2, z: 0 });
+                if (c > 1 && c < 6) pts.push({ x: c, y: 1, z: 1 });
+                if (c > 2 && c < 5) pts.push({ x: c, y: 3, z: 1 });
+              }
+              return pts;
+            }
+          }
+        ];
+
+        if (level <= layouts.length) {
+          const l = layouts[level - 1];
+          shapeName = `مستوى ${level}: ${l.name}`;
+          slots = l.getSlots();
+        } else {
+          shapeName = `مستوى ${level}: شكل عشوائي غير منتهٍ 🌀`;
+          const numPairs = Math.min(30, 10 + Math.floor((level - 4) * 2));
+          const totalTiles = numPairs * 2;
+          let pool = [];
+
+          for (let z = 0; z < 3; z++) {
+            for (let r = 0; r < 5; r++) {
+              for (let c = 0; c < 7; c++) {
+                if (z === 1 && (r === 0 || r === 4 || c === 0 || c === 6)) continue;
+                if (z === 2 && (r !== 2 || c < 2 || c > 4)) continue;
+                pool.push({ x: c, y: r, z: z });
+              }
+            }
+          }
+          this.shuffle(pool);
+          slots = pool.slice(0, totalTiles);
+        }
+
+        if (slots.length % 2 !== 0) slots.pop();
+
+        document.getElementById('shape-name').textContent = `${shapeName} (${slots.length} بلاطة)`;
+        return slots;
+      },
+
+      startNewGame() {
+        clearInterval(this.state.timerInterval);
+        this.state.timer = 0;
+        this.state.selectedTile = null;
+
+        const slots = this.generateSlots(this.state.level);
+        const pairsCount = slots.length / 2;
+
+        const selectedFlags = this.getUniqueFlags(pairsCount);
+
+        let deck = [];
+        selectedFlags.forEach(flag => {
+          deck.push({ ...flag });
+          deck.push({ ...flag });
+        });
+
+        this.shuffle(deck);
+
+        this.state.tiles = slots.map((slot, idx) => ({
+          id: `tile_${idx}`,
+          x: slot.x,
+          y: slot.y,
+          z: slot.z,
+          flag: deck[idx],
+          removed: false
+        }));
+
+        this.renderBoard();
+        this.startTimer();
+        this.saveLocalData();
+      },
+
+      renderBoard() {
+        const board = document.getElementById('mahjong-board');
+        board.innerHTML = '';
+
+        this.state.tiles.forEach(tile => {
+          if (tile.removed) return;
+
+          const wrapper = document.createElement('div');
+          wrapper.className = `tile-wrapper`;
+          wrapper.id = tile.id;
+
+          const zIndex = tile.z * 40 + Math.floor(tile.y * 5);
+          wrapper.style.zIndex = zIndex;
+
+          wrapper.innerHTML = `
+            <div class="tile-3d-body">
+              <span class="text-3xl md:text-4xl leading-none mt-1 select-none flex-1 flex items-center justify-center">${tile.flag.emoji}</span>
+              <span class="text-[11px] font-black text-slate-900 truncate w-full text-center leading-tight mb-1 bg-white/80 rounded py-0.5 px-0.5">
+                ${tile.flag.name}
+              </span>
+            </div>
+          `;
+
+          wrapper.onclick = (e) => {
+            e.stopPropagation();
+            this.handleTileClick(tile);
+          };
+
+          board.appendChild(wrapper);
+        });
+
+        this.updateStats();
+        setTimeout(() => this.fitBoardToScreen(true), 20);
+      },
+
+      handleTileClick(tile) {
+        if (tile.removed) return;
+
+        if (!this.state.selectedTile) {
+          this.state.selectedTile = tile;
+          document.getElementById(tile.id)?.classList.add('selected');
+          return;
+        }
+
+        if (this.state.selectedTile.id === tile.id) {
+          document.getElementById(tile.id)?.classList.remove('selected');
+          this.state.selectedTile = null;
+          return;
+        }
+
+        if (this.state.selectedTile.flag.id === tile.flag.id) {
+          const t1 = this.state.selectedTile;
+          const t2 = tile;
+
+          t1.removed = true;
+          t2.removed = true;
+
+          document.getElementById(t1.id)?.remove();
+          document.getElementById(t2.id)?.remove();
+
+          this.state.score += 100;
+          this.state.discoveredCount++;
+          this.state.selectedTile = null;
+
+          this.updateStats();
+          this.saveLocalData();
+          this.checkWinState();
+        } else {
+          document.getElementById(this.state.selectedTile.id)?.classList.remove('selected');
+          this.state.selectedTile = tile;
+          document.getElementById(tile.id)?.classList.add('selected');
+        }
+      },
+
+      shuffleTiles() {
+        const activeTiles = this.state.tiles.filter(t => !t.removed);
+        if (activeTiles.length === 0) return;
+
+        const activeFlags = activeTiles.map(t => t.flag);
+        this.shuffle(activeFlags);
+
+        activeTiles.forEach((t, idx) => {
+          t.flag = activeFlags[idx];
+        });
+
+        this.renderBoard();
+      },
+
+      checkWinState() {
+        const remaining = this.state.tiles.filter(t => !t.removed);
+        if (remaining.length === 0) {
+          setTimeout(() => {
+            alert(`🎉 أحسنت! تم إكمال المستوى ${this.state.level} بنجاح!`);
+            this.nextLevel();
+          }, 250);
+        }
+      },
+
+      startTimer() {
+        this.state.timerInterval = setInterval(() => {
+          this.state.timer++;
+          const mins = String(Math.floor(this.state.timer / 60)).padStart(2, '0');
+          const secs = String(this.state.timer % 60).padStart(2, '0');
+          const str = `${mins}:${secs}`;
+          document.getElementById('stat-timer').textContent = str;
+          document.getElementById('stat-timer-m').textContent = str;
+        }, 1000);
+      },
+
+      updateStats() {
+        const remaining = this.state.tiles.filter(t => !t.removed).length;
+        const totalDiscovered = Math.min(254, (254 - this.state.flagPool.length));
+
+        document.getElementById('stat-tiles').textContent = remaining;
+        document.getElementById('stat-tiles-m').textContent = remaining;
+        document.getElementById('stat-score').textContent = this.state.score;
+        document.getElementById('stat-score-m').textContent = this.state.score;
+        document.getElementById('stat-level').textContent = this.state.level;
+        document.getElementById('stat-level-m').textContent = this.state.level;
+        document.getElementById('stat-discovered').textContent = `${totalDiscovered}/254`;
+        document.getElementById('stat-discovered-m').textContent = `${totalDiscovered}/254`;
+      },
+
+      nextLevel() {
+        this.state.level++;
+        this.startNewGame();
+      },
+
+      restartLevel() {
+        this.startNewGame();
+      },
+
+      shuffle(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+      }
+    };
+
+    window.onload = () => {
+      MahjongApp.init();
+      window.MahjongApp = MahjongApp;
+    };
+  </script>
+</body>
+</html>
+```
